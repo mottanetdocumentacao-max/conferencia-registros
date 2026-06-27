@@ -1,13 +1,9 @@
-// ══════════════════════════════════════════════════════
-//  PREENCHA COM AS SUAS CREDENCIAIS DO FIREBASE
-//  (veja o README.md para saber onde encontrá-las)
-// ══════════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey:            "COLE_AQUI",
-  authDomain:        "COLE_AQUI",
-  databaseURL:       "COLE_AQUI",   // termina em .firebaseio.com
-  projectId:         "COLE_AQUI",
-  storageBucket:     "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId:             "COLE_AQUI"
+  apiKey: "AIzaSyXXXXXX...",
+  authDomain: "seu-projeto.firebaseapp.com",
+  databaseURL: "https://seu-projeto-default-rtdb.firebaseio.com",
+  projectId: "seu-projeto",
+  storageBucket: "seu-projeto.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abc123"
 };
