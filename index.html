@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conferência – Instalações e Mudanças</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Configuração do projeto Firebase (você preenche) -->
+<script src="firebase-config.js"></script>
+
+<!-- Dados dos registros -->
+<script src="data.js"></script>
+
+<style>
+  :root {
+    --brand:     #1B4F72;
+    --brand-lt:  #2E86C1;
+    --accent:    #F39C12;
+    --ok:        #1E8449;
+    --ok-bg:     #D5F5E3;
+    --nok:       #C0392B;
+    --nok-bg:    #FADBD8;
+    --pend:      #7D6608;
+    --pend-bg:   #FEF9E7;
+    --bg:        #F0F3F7;
+    --card:      #FFFFFF;
+    --border:    #D5D8DC;
+    --text:      #1C2833;
+    --muted:     #7F8C8D;
+    --radius:    8px;
+    --shadow:    0 2px 8px rgba(0,0,0,.10);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── LOADING ── */
+  #loading-screen {
+    position: fixed; inset: 0; background: #1B4F72;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; color: #fff; gap: 16px;
+  }
+  #loading-screen .spinner {
+    width: 44px; height: 44px; border: 4px solid rgba(255,255,255,.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-screen p { font-size: 15px; opacity: .85; }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: none; min-height: 100vh; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #1B4F72 0%, #154360 100%);
+  }
+  #login-screen.visible { display: flex; }
+  .login-card {
+    background: var(--card); border-radius: 16px; padding: 48px 40px; width: 380px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.30); text-align: center;
+  }
+  .login-card .logo { font-size: 40px; margin-bottom: 8px; }
+  .login-card h1 { font-size: 20px; color: var(--brand); margin-bottom: 4px; }
+  .login-card p  { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .login-card h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+  .user-btn {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; padding: 14px 18px; margin-bottom: 10px;
+    border: 2px solid var(--border); border-radius: var(--radius);
+    background: #fff; cursor: pointer; font-size: 15px; font-weight: 600; color: var(--text);
+    transition: border-color .15s, background .15s;
+  }
+  .user-btn:hover { border-color: var(--brand-lt); background: #EBF5FB; }
+  .user-btn .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+
+  /* ── TOPBAR ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  #app.visible { display: flex; }
+  .topbar {
+    background: var(--brand); color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 56px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-left span { font-size: 20px; }
+  .topbar-left strong { font-size: 16px; }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .sync-badge { font-size: 11px; background: rgba(255,255,255,.15); border-radius: 12px; padding: 3px 10px; }
+  .sync-badge.ok  { background: rgba(46,204,113,.25); }
+  .sync-badge.err { background: rgba(231,76,60,.25); }
+  .user-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.15); border-radius: 20px; padding: 4px 14px 4px 6px;
+    font-size: 13px; font-weight: 600;
+  }
+  .user-pill .avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; }
+  .btn-logout { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); color:#fff; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:12px; }
+  .btn-logout:hover { background: rgba(255,255,255,.22); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; background: var(--card); border-bottom: 2px solid var(--border); padding: 0 24px; }
+  .tab { padding: 14px 20px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: color .15s; }
+  .tab.active { color: var(--brand-lt); border-bottom-color: var(--brand-lt); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── CONTENT ── */
+  .content { flex: 1; padding: 20px 24px; }
+
+  /* ── STATS CARDS ── */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); border-left: 4px solid var(--brand); }
+  .stat-card.ok   { border-left-color: var(--ok); }
+  .stat-card.nok  { border-left-color: var(--nok); }
+  .stat-card.pend { border-left-color: var(--accent); }
+  .stat-card.croqui { border-left-color: #8E44AD; }
+  .stat-card .val { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-card .lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── FILTERS ── */
+  .filters {
+    background: var(--card); border-radius: var(--radius); padding: 14px 18px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+  }
+  .filters > div { display: flex; flex-direction: column; gap: 4px; }
+  .filters input, .filters select {
+    border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 13px; color: var(--text);
+    background: #fff; outline: none;
+  }
+  .filters input { min-width: 220px; }
+  .filters input:focus, .filters select:focus { border-color: var(--brand-lt); }
+  .filters label { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+  /* ── TABLE ── */
+  .table-wrap { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .table-meta { padding: 12px 16px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--brand); color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid #EAECEE; transition: background .1s; }
+  tbody tr:hover { background: #F2F4F6; }
+  tbody tr.row-ok  { background: #F0FBF4; }
+  tbody tr.row-nok { background: #FEF0EF; }
+  tbody tr.row-ok:hover  { background: #E3F7EB; }
+  tbody tr.row-nok:hover { background: #FBDFDC; }
+  td { padding: 9px 12px; vertical-align: middle; }
+  td.proto  { font-weight: 700; color: var(--brand-lt); white-space: nowrap; }
+  td.client { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .badge { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .badge-inst  { background: #D6EAF8; color: #1A5276; }
+  .badge-mud   { background: #D5F5E3; color: #145A32; }
+  .badge-ok    { background: var(--ok-bg); color: var(--ok); }
+  .badge-nok   { background: var(--nok-bg); color: var(--nok); }
+  .badge-pend  { background: var(--pend-bg); color: var(--pend); }
+  .badge-sim   { background: #D5F5E3; color: #1E8449; }
+  .badge-nao   { background: #FADBD8; color: #C0392B; }
+
+  /* ── ACTION BUTTONS ── */
+  .action-group { display: flex; gap: 5px; align-items: center; }
+  .btn-ok, .btn-nok, .btn-edit {
+    border: none; border-radius: 5px; padding: 5px 9px; cursor: pointer; font-size: 11px; font-weight: 700;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn-ok   { background: var(--ok);       color: #fff; }
+  .btn-nok  { background: var(--nok);      color: #fff; }
+  .btn-edit { background: var(--brand-lt); color: #fff; }
+  .btn-ok:hover, .btn-nok:hover, .btn-edit:hover { opacity: .85; }
+  .btn-ok:active, .btn-nok:active { transform: scale(.95); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    z-index: 500; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 12px; padding: 28px 32px; width: 500px; max-width: 95vw;
+    box-shadow: 0 16px 48px rgba(0,0,0,.25); max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 { font-size: 17px; margin-bottom: 4px; }
+  .modal .modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+  .modal label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; margin-top: 14px; }
+  .modal input, .modal textarea, .modal select {
+    width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 9px 12px;
+    font-size: 14px; color: var(--text); outline: none; font-family: inherit; background: #fff;
+  }
+  .modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--brand-lt); }
+  .modal textarea { resize: vertical; min-height: 70px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
+  .btn-primary   { background: var(--brand); color: #fff; border: none; border-radius: 6px; padding: 9px 20px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-primary:hover { background: var(--brand-lt); }
+  .btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 9px 20px; cursor: pointer; font-size: 14px; }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-danger    { background: var(--nok); color: #fff; border: none; border-radius: 6px; padding: 9px 20px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .saving-overlay { position: absolute; inset: 0; background: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; border-radius: 12px; font-weight: 600; color: var(--brand); }
+
+  /* ── RESUMO ── */
+  #tab-resumo { display: none; }
+  .resumo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+  .resumo-card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+  .resumo-card h4 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--bg); }
+  .prog-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .prog-label { flex: 1; font-size: 13px; }
+  .prog-bar-wrap { flex: 2; background: var(--bg); border-radius: 6px; height: 10px; overflow: hidden; }
+  .prog-bar { height: 100%; border-radius: 6px; transition: width .4s; }
+  .prog-val { font-size: 12px; font-weight: 700; width: 38px; text-align: right; }
+  .conf-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--bg); }
+  .conf-row:last-child { border-bottom: none; }
+  .conf-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .conf-stats { font-size: 12px; color: var(--muted); }
+
+  /* ── PAGINAÇÃO ── */
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .pg-btn { border: 1px solid var(--border); background: #fff; border-radius: 5px; padding: 5px 10px; cursor: pointer; font-size: 13px; color: var(--text); }
+  .pg-btn:hover { background: var(--bg); }
+  .pg-btn.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .pg-btn:disabled { opacity: .4; cursor: default; }
+
+  /* ── TOAST ── */
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #212F3D; color:#fff; border-radius:8px; padding:12px 22px; font-size:14px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.3); opacity:0; transition:opacity .25s; z-index:9999; pointer-events:none; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+
+  .atd-num  { font-size: 11px; color: var(--brand-lt); font-weight: 700; }
+  .obs-txt  { font-size: 11px; color: var(--muted); max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  .hidden   { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="spinner"></div>
+  <p id="loading-msg">Conectando ao banco de dados...</p>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="logo">📡</div>
+    <h1>Conferência de Registros</h1>
+    <p>Instalações e Mudanças – Maio/Junho</p>
+    <h2>Selecione seu nome</h2>
+    <button class="user-btn" onclick="login('João','#1A5276')">
+      <div class="avatar" style="background:#1A5276">JO</div> João
+    </button>
+    <button class="user-btn" onclick="login('Millena','#6C3483')">
+      <div class="avatar" style="background:#6C3483">MI</div> Millena
+    </button>
+    <button class="user-btn" onclick="login('Jair','#1E8449')">
+      <div class="avatar" style="background:#1E8449">JA</div> Jair
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span>📡</span>
+      <strong>Conferência de Registros</strong>
+    </div>
+    <div class="topbar-right">
+      <span class="sync-badge" id="sync-badge">⏳ Sincronizando...</span>
+      <div class="user-pill">
+        <div class="avatar" id="top-avatar"></div>
+        <span id="top-name"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('conferencia',this)">📋 Conferência</div>
+    <div class="tab" onclick="showTab('resumo',this)">📊 Resumo</div>
+  </div>
+
+  <div class="content">
+
+    <!-- TAB CONFERÊNCIA -->
+    <div id="tab-conferencia">
+      <div class="stats-row">
+        <div class="stat-card">       <div class="val" id="st-total">—</div><div class="lbl">Total de registros</div></div>
+        <div class="stat-card ok">    <div class="val" id="st-ok">—</div>   <div class="lbl">✅ Aprovados</div></div>
+        <div class="stat-card nok">   <div class="val" id="st-nok">—</div>  <div class="lbl">❌ Reprovados</div></div>
+        <div class="stat-card pend">  <div class="val" id="st-pend">—</div> <div class="lbl">⏳ Pendentes</div></div>
+        <div class="stat-card">       <div class="val" id="st-atd">—</div>  <div class="lbl">🎫 Com atendimento</div></div>
+        <div class="stat-card croqui"><div class="val" id="st-croqui">—</div><div class="lbl">📐 Croqui gerado</div></div>
+      </div>
+
+      <div class="filters">
+        <div>
+          <label>Buscar</label>
+          <input type="text" id="search" placeholder="Protocolo, cliente, cidade..." oninput="applyFilters()">
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="f-tipo" onchange="applyFilters()">
+            <option value="">Todos</option>
+            <option>NOVA INSTALAÇÃO</option>
+            <option>MUDANÇA DE ENDEREÇO</option>
+          </select>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="f-status" onchange="applyFilters()">
+            <option value="">Todos</option>
+            <option value="APROVADO">✅ Aprovados</option>
+            <option value="REPROVADO">❌ Reprovados</option>
+            <option value="PENDENTE">⏳ Pendentes</option>
+          </select>
+        </div>
+        <div>
+          <label>Croqui</label>
+          <select id="f-croqui" onchange="applyFilters()">
+            <option value="">Todos</option>
+            <option value="SIM">✔ Sim</option>
+            <option value="NÃO">✘ Não</option>
+            <option value="VAZIO">— Não informado</option>
+          </select>
+        </div>
+        <div>
+          <label>Conferente</label>
+          <select id="f-conf" onchange="applyFilters()">
+            <option value="">Todos</option>
+            <option>João</option>
+            <option>Millena</option>
+            <option>Jair</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-meta">
+          <span id="tbl-count">Carregando...</span>
+          <span style="font-size:11px">Página <span id="pg-label">—</span></span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Protocolo</th>
+              <th>Cliente</th>
+              <th>Responsável</th>
+              <th>Tipo</th>
+              <th>Cidade</th>
+              <th>Conferente</th>
+              <th>Status</th>
+              <th>Croqui</th>
+              <th>Atendimento / Obs</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body"></tbody>
+        </table>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- TAB RESUMO -->
+    <div id="tab-resumo" class="hidden">
+      <div class="resumo-grid">
+        <div class="resumo-card"><h4>Progresso Geral</h4><div id="prog-geral"></div></div>
+        <div class="resumo-card"><h4>Croqui Gerado</h4><div id="prog-croqui"></div></div>
+        <div class="resumo-card"><h4>Por Tipo</h4><div id="prog-tipo"></div></div>
+        <div class="resumo-card"><h4>Por Conferente</h4><div id="prog-conf"></div></div>
+        <div class="resumo-card" style="grid-column: 1 / -1"><h4>Últimas Conferências</h4><div id="ultimas"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL CONFERIR -->
+<div class="modal-overlay" id="modal">
+  <div class="modal" style="position:relative">
+    <h3 id="modal-title">Conferir Registro</h3>
+    <div class="modal-sub" id="modal-sub"></div>
+    <label>Decisão</label>
+    <select id="modal-status">
+      <option value="APROVADO">✅ APROVADO</option>
+      <option value="REPROVADO">❌ REPROVADO</option>
+    </select>
+    <label>Croqui Gerado</label>
+    <select id="modal-croqui">
+      <option value="">— Selecione —</option>
+      <option value="SIM">✔ SIM</option>
+      <option value="NÃO">✘ NÃO</option>
+    </select>
+    <label>Nº do Atendimento <span style="font-weight:400;color:#999">(abra no sistema e cole aqui)</span></label>
+    <input type="text" id="modal-atd" placeholder="Ex: ATD-20250625-00123">
+    <label>Observação <span style="font-weight:400;color:#999">(opcional)</span></label>
+    <textarea id="modal-obs" placeholder="Anotações sobre esta conferência..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveConferencia()">Salvar</button>
+    </div>
+    <div class="saving-overlay hidden" id="modal-saving">💾 Salvando...</div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal-overlay" id="modal-view">
+  <div class="modal" style="position:relative">
+    <h3 id="mv-title">Editar</h3>
+    <div class="modal-sub" id="mv-sub"></div>
+    <label>Status</label>
+    <select id="mv-status">
+      <option value="APROVADO">✅ APROVADO</option>
+      <option value="REPROVADO">❌ REPROVADO</option>
+    </select>
+    <label>Croqui Gerado</label>
+    <select id="mv-croqui">
+      <option value="">— Selecione —</option>
+      <option value="SIM">✔ SIM</option>
+      <option value="NÃO">✘ NÃO</option>
+    </select>
+    <label>Nº do Atendimento</label>
+    <input type="text" id="mv-atd">
+    <label>Observação</label>
+    <textarea id="mv-obs"></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModalView()">Cancelar</button>
+      <button class="btn-danger"    onclick="deleteConferencia()">Remover</button>
+      <button class="btn-primary"   onclick="saveEdit()">Atualizar</button>
+    </div>
+    <div class="saving-overlay hidden" id="mv-saving">💾 Salvando...</div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  INICIALIZA FIREBASE
+// ═══════════════════════════════════════════════
+firebase.initializeApp(firebaseConfig);
+const db  = firebase.database();
+const ref = db.ref('conferencias');
+
+// ═══════════════════════════════════════════════
+//  ESTADO
+// ═══════════════════════════════════════════════
+let currentUser  = null;
+let userColor    = '#1A5276';
+let conferencias = {};   // espelho local do Firebase
+let filtered     = [];
+let page         = 1;
+const PER_PAGE   = 50;
+let editingProto = null;
+let modalProto   = null;
+let dbReady      = false;
+
+// ═══════════════════════════════════════════════
+//  CONEXÃO FIREBASE – escuta mudanças em tempo real
+// ═══════════════════════════════════════════════
+function initDB() {
+  setLoading('Conectando ao banco de dados...');
+
+  // Detecta estado da conexão
+  db.ref('.info/connected').on('value', snap => {
+    const connected = snap.val();
+    const badge = document.getElementById('sync-badge');
+    if (connected) {
+      badge.textContent = '🟢 Online';
+      badge.className = 'sync-badge ok';
+    } else {
+      badge.textContent = '🔴 Offline';
+      badge.className = 'sync-badge err';
+    }
+  });
+
+  // Escuta TODAS as conferências em tempo real
+  ref.on('value', snap => {
+    conferencias = snap.val() || {};
+    if (!dbReady) {
+      dbReady = true;
+      hideLoading();
+    }
+    // Atualiza UI se já logado
+    if (currentUser) {
+      applyFilters();
+      updateStats();
+    }
+  }, err => {
+    console.error(err);
+    setLoading('❌ Erro ao conectar. Verifique o firebase-config.js e as regras do banco.');
+  });
+}
+
+function setLoading(msg) {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading-screen').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('login-screen').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════
+//  LOGIN / LOGOUT
+// ═══════════════════════════════════════════════
+function login(name, color) {
+  currentUser = name; userColor = color;
+  document.getElementById('login-screen').classList.remove('visible');
+  document.getElementById('app').classList.add('visible');
+  const av = document.getElementById('top-avatar');
+  av.textContent = name.slice(0,2).toUpperCase();
+  av.style.background = color;
+  document.getElementById('top-name').textContent = name;
+  applyFilters();
+  updateStats();
+}
+function logout() {
+  currentUser = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function showTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-conferencia').classList.toggle('hidden', name !== 'conferencia');
+  document.getElementById('tab-resumo').classList.toggle('hidden', name !== 'resumo');
+  if (name === 'resumo') buildResumo();
+}
+
+// ═══════════════════════════════════════════════
+//  FILTROS
+// ═══════════════════════════════════════════════
+function applyFilters() {
+  const q      = document.getElementById('search').value.toLowerCase();
+  const tipo   = document.getElementById('f-tipo').value;
+  const fst    = document.getElementById('f-status').value;
+  const fcroqui= document.getElementById('f-croqui').value;
+  const fconf  = document.getElementById('f-conf').value;
+
+  filtered = REGISTROS.filter(r => {
+    const conf      = conferencias[r.Protocolo];
+    const status    = conf ? conf.status    : 'PENDENTE';
+    const conferente= conf ? conf.conferente: '';
+    const croqui    = conf ? (conf.croqui || '') : '';
+    if (q && ![String(r.Protocolo), r.Cliente, r.Responsavel, r.Cidade, r['Tipo Atendimento']]
+              .join(' ').toLowerCase().includes(q)) return false;
+    if (tipo    && r['Tipo Atendimento'] !== tipo)  return false;
+    if (fst     && status !== fst)                  return false;
+    if (fconf   && conferente !== fconf)             return false;
+    if (fcroqui === 'VAZIO' && croqui !== '')        return false;
+    if (fcroqui && fcroqui !== 'VAZIO' && croqui !== fcroqui) return false;
+    return true;
+  });
+  page = 1;
+  renderTable();
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════
+//  TABELA
+// ═══════════════════════════════════════════════
+function renderTable() {
+  const start = (page - 1) * PER_PAGE;
+  const slice = filtered.slice(start, start + PER_PAGE);
+  const tbody = document.getElementById('tbl-body');
+
+  tbody.innerHTML = slice.map(r => {
+    const conf      = conferencias[r.Protocolo];
+    const status    = conf ? conf.status     : 'PENDENTE';
+    const atd       = conf ? (conf.atd  || '') : '';
+    const obs       = conf ? (conf.obs  || '') : '';
+    const croqui    = conf ? (conf.croqui || '') : '';
+    const conferente= conf ? conf.conferente : '';
+    const rowCls    = status === 'APROVADO' ? 'row-ok' : status === 'REPROVADO' ? 'row-nok' : '';
+
+    const badgeTipo  = r['Tipo Atendimento'] === 'NOVA INSTALAÇÃO'
+      ? '<span class="badge badge-inst">🔧 Instalação</span>'
+      : '<span class="badge badge-mud">📦 Mudança</span>';
+    const badgeSt    = status === 'APROVADO'  ? '<span class="badge badge-ok">✅ Aprovado</span>'
+                     : status === 'REPROVADO' ? '<span class="badge badge-nok">❌ Reprovado</span>'
+                     : '<span class="badge badge-pend">⏳ Pendente</span>';
+    const croquiHtml = croqui === 'SIM' ? '<span class="badge badge-sim">✔ SIM</span>'
+                     : croqui === 'NÃO' ? '<span class="badge badge-nao">✘ NÃO</span>'
+                     : '<span style="color:#ccc;font-size:11px">—</span>';
+    const atdHtml    = atd ? `<span class="atd-num">🎫 ${atd}</span>` : '<span style="color:#ccc;font-size:11px">—</span>';
+    const confHtml   = conferente
+      ? `<span style="font-size:12px;font-weight:600">${conferente}</span>`
+      : '<span style="color:#ccc;font-size:11px">—</span>';
+
+    const isPending = status === 'PENDENTE';
+    const actions   = isPending
+      ? `<div class="action-group">
+           <button class="btn-ok"  onclick="openModal(${r.Protocolo},'APROVADO')">✅</button>
+           <button class="btn-nok" onclick="openModal(${r.Protocolo},'REPROVADO')">❌</button>
+         </div>`
+      : `<button class="btn-edit" onclick="openEdit(${r.Protocolo})">✏️ Editar</button>`;
+
+    return `<tr class="${rowCls}">
+      <td class="proto">${r.Protocolo}</td>
+      <td class="client" title="${r.Cliente}">${r.Cliente}</td>
+      <td style="font-size:12px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.Responsavel}">${r.Responsavel}</td>
+      <td>${badgeTipo}</td>
+      <td style="font-size:12px;white-space:nowrap">${r.Cidade}</td>
+      <td>${confHtml}</td>
+      <td>${badgeSt}</td>
+      <td style="text-align:center">${croquiHtml}</td>
+      <td>${atdHtml}${obs ? `<span class="obs-txt" title="${obs}">${obs}</span>` : ''}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('tbl-count').textContent = `${filtered.length} registro(s) encontrado(s)`;
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filtered.length / PER_PAGE);
+  const pg    = document.getElementById('pagination');
+  document.getElementById('pg-label').textContent = `${page} / ${total || 1}`;
+  if (total <= 1) { pg.innerHTML = ''; return; }
+  let html = `<button class="pg-btn" onclick="goPage(${page-1})" ${page===1?'disabled':''}>‹ Anterior</button>`;
+  const s = Math.max(1, page-2), e = Math.min(total, page+2);
+  if (s > 1) html += `<button class="pg-btn" onclick="goPage(1)">1</button>${s>2?'<span style="padding:0 4px">…</span>':''}`;
+  for (let i=s;i<=e;i++) html += `<button class="pg-btn ${i===page?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  if (e < total) html += `${e<total-1?'<span style="padding:0 4px">…</span>':''}<button class="pg-btn" onclick="goPage(${total})">${total}</button>`;
+  html += `<button class="pg-btn" onclick="goPage(${page+1})" ${page===total?'disabled':''}>Próxima ›</button>`;
+  pg.innerHTML = html;
+}
+function goPage(p) { page = p; renderTable(); window.scrollTo(0,0); }
+
+// ═══════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════
+function updateStats() {
+  const total = REGISTROS.length;
+  let ok=0, nok=0, atd=0, croqui=0;
+  REGISTROS.forEach(r => {
+    const c = conferencias[r.Protocolo];
+    if (!c) return;
+    if (c.status==='APROVADO')  ok++;
+    if (c.status==='REPROVADO') nok++;
+    if (c.atd)    atd++;
+    if (c.croqui==='SIM') croqui++;
+  });
+  document.getElementById('st-total').textContent  = total;
+  document.getElementById('st-ok').textContent     = ok;
+  document.getElementById('st-nok').textContent    = nok;
+  document.getElementById('st-pend').textContent   = total - ok - nok;
+  document.getElementById('st-atd').textContent    = atd;
+  document.getElementById('st-croqui').textContent = croqui;
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL CONFERIR
+// ═══════════════════════════════════════════════
+function openModal(proto, status) {
+  modalProto = proto;
+  const r = REGISTROS.find(x => x.Protocolo === proto);
+  document.getElementById('modal-title').textContent = `Conferir Protocolo ${proto}`;
+  document.getElementById('modal-sub').textContent   = r.Cliente + ' · ' + r['Tipo Atendimento'];
+  document.getElementById('modal-status').value  = status;
+  document.getElementById('modal-croqui').value  = '';
+  document.getElementById('modal-atd').value     = '';
+  document.getElementById('modal-obs').value     = '';
+  document.getElementById('modal-saving').classList.add('hidden');
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-atd').focus();
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+function saveConferencia() {
+  const status = document.getElementById('modal-status').value;
+  const croqui = document.getElementById('modal-croqui').value;
+  const atd    = document.getElementById('modal-atd').value.trim();
+  const obs    = document.getElementById('modal-obs').value.trim();
+  const data   = { status, croqui, atd, obs, conferente: currentUser, ts: Date.now() };
+
+  document.getElementById('modal-saving').classList.remove('hidden');
+
+  ref.child(String(modalProto)).set(data)
+    .then(() => {
+      closeModal();
+      toast(status === 'APROVADO' ? '✅ Aprovado e salvo!' : '❌ Reprovado e salvo!');
+    })
+    .catch(err => {
+      document.getElementById('modal-saving').classList.add('hidden');
+      toast('⚠️ Erro ao salvar: ' + err.message);
+    });
+}
+
+// ═══════════════════════════════════════════════
+//  MODAL EDITAR
+// ═══════════════════════════════════════════════
+function openEdit(proto) {
+  editingProto = proto;
+  const r = REGISTROS.find(x => x.Protocolo === proto);
+  const c = conferencias[proto] || {};
+  document.getElementById('mv-title').textContent = `Editar – Protocolo ${proto}`;
+  document.getElementById('mv-sub').textContent   = r.Cliente + ' · ' + r['Tipo Atendimento'];
+  document.getElementById('mv-status').value  = c.status  || 'APROVADO';
+  document.getElementById('mv-croqui').value  = c.croqui  || '';
+  document.getElementById('mv-atd').value     = c.atd     || '';
+  document.getElementById('mv-obs').value     = c.obs     || '';
+  document.getElementById('mv-saving').classList.add('hidden');
+  document.getElementById('modal-view').classList.add('open');
+}
+function closeModalView() { document.getElementById('modal-view').classList.remove('open'); }
+
+function saveEdit() {
+  const status = document.getElementById('mv-status').value;
+  const croqui = document.getElementById('mv-croqui').value;
+  const atd    = document.getElementById('mv-atd').value.trim();
+  const obs    = document.getElementById('mv-obs').value.trim();
+  const prev   = conferencias[editingProto] || {};
+  const data   = { ...prev, status, croqui, atd, obs, conferente: prev.conferente || currentUser, ts: Date.now() };
+
+  document.getElementById('mv-saving').classList.remove('hidden');
+
+  ref.child(String(editingProto)).set(data)
+    .then(() => { closeModalView(); toast('💾 Atualizado!'); })
+    .catch(err => {
+      document.getElementById('mv-saving').classList.add('hidden');
+      toast('⚠️ Erro: ' + err.message);
+    });
+}
+
+function deleteConferencia() {
+  if (!confirm('Remover conferência deste protocolo?')) return;
+  document.getElementById('mv-saving').classList.remove('hidden');
+  ref.child(String(editingProto)).remove()
+    .then(() => { closeModalView(); toast('🗑️ Removido!'); })
+    .catch(err => toast('⚠️ Erro: ' + err.message));
+}
+
+// ═══════════════════════════════════════════════
+//  RESUMO
+// ═══════════════════════════════════════════════
+function buildResumo() {
+  const total = REGISTROS.length;
+  let ok=0, nok=0, atd=0, croquiSim=0, croquiNao=0, croquiTotal=0;
+  const byConf = {João:{ok:0,nok:0},Millena:{ok:0,nok:0},Jair:{ok:0,nok:0}};
+  const byTipo = {'NOVA INSTALAÇÃO':{ok:0,nok:0,total:0},'MUDANÇA DE ENDEREÇO':{ok:0,nok:0,total:0}};
+  const recentes = [];
+
+  REGISTROS.forEach(r => {
+    const c = conferencias[r.Protocolo];
+    const t = r['Tipo Atendimento'];
+    byTipo[t].total++;
+    if (!c) return;
+    if (c.status==='APROVADO')  { ok++;  byTipo[t].ok++;  }
+    if (c.status==='REPROVADO') { nok++; byTipo[t].nok++; }
+    if (c.atd)   atd++;
+    if (c.croqui) {
+      croquiTotal++;
+      if (c.croqui==='SIM') croquiSim++;
+      else if (c.croqui==='NÃO') croquiNao++;
+    }
+    if (byConf[c.conferente]) {
+      if (c.status==='APROVADO')  byConf[c.conferente].ok++;
+      else                        byConf[c.conferente].nok++;
+    }
+    recentes.push({proto:r.Protocolo,cliente:r.Cliente,status:c.status,conferente:c.conferente,ts:c.ts});
+  });
+
+  const confTotal = ok + nok;
+  document.getElementById('prog-geral').innerHTML =
+      progRow('Total conferido', confTotal, total, '#2E86C1')
+    + progRow('Aprovados',       ok,        total, '#1E8449')
+    + progRow('Reprovados',      nok,       total, '#C0392B')
+    + progRow('Com atendimento', atd,       total, '#F39C12');
+
+  document.getElementById('prog-croqui').innerHTML =
+      progRow('✔ Sim',        croquiSim,              confTotal, '#1E8449')
+    + progRow('✘ Não',        croquiNao,              confTotal, '#C0392B')
+    + progRow('Não informado',confTotal - croquiTotal, confTotal, '#95A5A6')
+    + `<div style="margin-top:10px;font-size:12px;color:var(--muted)">${croquiTotal} de ${confTotal} com croqui preenchido</div>`;
+
+  document.getElementById('prog-tipo').innerHTML =
+    Object.entries(byTipo).map(([t,v]) =>
+      `<div style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:6px">${t==='NOVA INSTALAÇÃO'?'🔧':'📦'} ${t} <span style="color:var(--muted);font-weight:400">(${v.total})</span></div>`
+      + progRow('Aprovados',  v.ok,  v.total, '#1E8449')
+      + progRow('Reprovados', v.nok, v.total, '#C0392B')
+      + `</div>`
+    ).join('');
+
+  const colors = {João:'#1A5276',Millena:'#6C3483',Jair:'#1E8449'};
+  document.getElementById('prog-conf').innerHTML = Object.entries(byConf).map(([name,v]) => {
+    const done = v.ok + v.nok;
+    return `<div class="conf-row">
+      <div class="conf-name">
+        <div style="background:${colors[name]};width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">${name.slice(0,2).toUpperCase()}</div>
+        ${name}
+      </div>
+      <div class="conf-stats">✅ ${v.ok} · ❌ ${v.nok} · ${done} conferidos</div>
+    </div>`;
+  }).join('');
+
+  recentes.sort((a,b) => b.ts - a.ts);
+  document.getElementById('ultimas').innerHTML = recentes.slice(0,10).map(r => {
+    const d    = new Date(r.ts);
+    const hora = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    const dia  = d.toLocaleDateString('pt-BR');
+    return `<div class="conf-row">
+      <div>
+        <div style="font-size:13px;font-weight:600">${r.proto} <span style="font-weight:400;color:var(--muted)">– ${r.cliente.split(' ').slice(0,3).join(' ')}</span></div>
+        <div style="font-size:11px;color:var(--muted)">${r.conferente} · ${dia} ${hora}</div>
+      </div>
+      <span class="badge ${r.status==='APROVADO'?'badge-ok':'badge-nok'}">${r.status==='APROVADO'?'✅':'❌'} ${r.status}</span>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:13px;padding:8px 0">Nenhuma conferência ainda.</div>';
+}
+
+function progRow(label, val, total, color) {
+  const pct = total ? Math.round(val/total*100) : 0;
+  return `<div class="prog-row">
+    <div class="prog-label">${label}</div>
+    <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%;background:${color}"></div></div>
+    <div class="prog-val" style="color:${color}">${val}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ═══════════════════════════════════════════════
+//  ATALHOS DE TECLADO
+// ═══════════════════════════════════════════════
+document.getElementById('modal').addEventListener('click',      function(e){ if(e.target===this) closeModal(); });
+document.getElementById('modal-view').addEventListener('click', function(e){ if(e.target===this) closeModalView(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeModal(); closeModalView(); } });
+
+// ═══════════════════════════════════════════════
+//  INICIALIZA
+// ═══════════════════════════════════════════════
+initDB();
+</script>
+</body>
+</html>
